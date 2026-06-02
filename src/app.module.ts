@@ -1,14 +1,18 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ZodValidationPipe } from 'nestjs-zod';
 import configuration from './config/configuration';
 import { validateEnv } from './config/env.schema';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { PrismaModule } from './database/prisma.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 
 @Module({
@@ -19,7 +23,9 @@ import { HealthModule } from './modules/health/health.module';
       validate: (config) => validateEnv(config),
     }),
     PrismaModule,
+    AuditModule,
     HealthModule,
+    AuthModule,
   ],
   providers: [
     {
@@ -29,6 +35,14 @@ import { HealthModule } from './modules/health/health.module';
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     {
       provide: APP_INTERCEPTOR,
