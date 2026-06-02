@@ -1,0 +1,2 @@
+export const BSP_PROVIDER_TOKEN = Symbol('BSP_PROVIDER');
+export const NUMBER_PROVIDER_TOKEN = Symbol('NUMBER_PROVIDER');
