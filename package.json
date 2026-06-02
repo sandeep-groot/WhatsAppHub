@@ -10,13 +10,13 @@
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} src/database/prisma/seed.ts"
   },
   "scripts": {
-    "build": "nest build",
+    "build": "node api.js && nest build",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
+    "start": "node api.js && nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
