@@ -8,6 +8,16 @@ import { AppConfig } from './config/configuration';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const corsOrigins =
+    process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+    ];
+  app.enableCors({
+    origin: corsOrigins,
+    credentials: true,
+  });
+
   app.setGlobalPrefix('v1');
 
   const configService = app.get(ConfigService<AppConfig, true>);
@@ -17,7 +27,7 @@ async function bootstrap() {
     .setTitle('WhatsApp Hub API')
     .setDescription('WhatsApp Hub backend API')
     .setVersion('1.0')
-    .addServer(`http://localhost:${port}/v1`, 'Local v1')
+    .addServer(`http://localhost:${port}/`, 'Local v1')
     .addBearerAuth()
     .build();
 
