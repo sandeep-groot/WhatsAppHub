@@ -125,10 +125,10 @@ export class WhatsappService {
 
       // Upsert WhatsAppNumber connection
       const whatsAppNumber = await tx.whatsAppNumber.upsert({
-        where: { phoneNumber: registerResponse.phoneNumber },
+        where: { phoneNumberId: dto.phoneNumberId },
         update: {
+          phoneNumber: registerResponse.phoneNumber,
           wabaId: dto.wabaId,
-          phoneNumberId: dto.phoneNumberId,
           ycloudAccountId: dto.solutionId,
           connectionStatus: 'ACTIVE',
           lastPing: new Date(),
