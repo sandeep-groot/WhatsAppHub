@@ -1,19 +1,25 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { cleanupOpenApiDoc } from 'nestjs-zod';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/configuration';
+import {
+  buildSwaggerDocument,
+  setupSwagger,
+} from './config/swagger/setup-swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const corsOrigins =
-    process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'https://whats-app-hub-frontend.vercel.app'
-    ];
+  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) =>
+
+    o.trim(),
+
+  ) ?? [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://whats-app-hub-frontend.vercel.app',
+  ];
+
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
@@ -24,27 +30,8 @@ async function bootstrap() {
   const configService = app.get(ConfigService<AppConfig, true>);
   const port = configService.get('port', { infer: true });
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('WhatsApp Hub API')
-    .setDescription('WhatsApp Hub backend API')
-    .setVersion('1.0')
-    .addServer(`http://localhost:${port}/`, 'Local v1')
-    .addBearerAuth()
-    .build();
-
-  const rawDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  const document = cleanupOpenApiDoc(rawDocument);
-  SwaggerModule.setup('docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-    customCssUrl:
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css',
-    customJs: [
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-standalone-preset.js',
-    ],
-  });
+  const document = buildSwaggerDocument(app, port);
+  setupSwagger(app, document);
 
   await app.listen(port);
 }
