@@ -105,3 +105,80 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
 }
+
+enum ConnectionStatus {
+  PENDING
+  IN_PROGRESS
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  numbers WhatsAppNumber[]
+}
+
+model WhatsAppNumber {
+  id                 String           @id @default(cuid())
+  clientId           String
+  phoneNumber        String           @unique
+  voipProvider       String?
+  countryCode        String?
+  purchaseDate       DateTime?
+  businessManagerId  String?
+  wabaId             String?
+  phoneNumberId      String?          @unique
+  ycloudAccountId    String?
+  connectionStatus   ConnectionStatus @default(PENDING)
+  webhookUrl         String?
+  webhookVerifyToken String?
+  lastPing           DateTime?
+  messageCount       Int              @default(0)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  steps  OnboardingStep[]
+  messages Message[]
+}
+
+model OnboardingStep {
+  id         String     @id @default(cuid())
+  numberId   String
+  stepNumber Int
+  status     StepStatus @default(PENDING)
+  notes      String?
+  updatedAt  DateTime   @updatedAt
+
+  whatsAppNumber WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
+
+  @@unique([numberId, stepNumber])
+}
+
+model Message {
+  id              String         @id @default(cuid())
+  numberId        String
+  direction       String         // "INBOUND" or "OUTBOUND"
+  senderNumber    String
+  messageBody     String?        @db.Text
+  status          String         // "SENT", "DELIVERED", "READ", "FAILED"
+  ycloudMessageId String?        @unique
+  createdAt       DateTime       @default(now())
+
+  whatsAppNumber WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
+}
+
+

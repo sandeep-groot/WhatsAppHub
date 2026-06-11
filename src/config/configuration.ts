@@ -14,6 +14,11 @@ export type AppConfig = {
     bsp: EnvSchema['BSP_PROVIDER'];
     number: EnvSchema['NUMBER_PROVIDER'];
   };
+  ycloud: {
+    apiKey: string;
+    solutionId: string;
+    webhookSecret: string;
+  };
 };
 
 export default function configuration(): AppConfig {
@@ -36,5 +41,11 @@ export default function configuration(): AppConfig {
       number: (env.NUMBER_PROVIDER ??
         'twilio') as AppConfig['providers']['number'],
     },
+    ycloud: {
+      apiKey: env.YCLOUD_API_KEY ?? '',
+      solutionId: env.YCLOUD_SOLUTION_ID ?? '',
+      webhookSecret: env.YCLOUD_WEBHOOK_SECRET ?? '',
+    },
   };
 }
+
