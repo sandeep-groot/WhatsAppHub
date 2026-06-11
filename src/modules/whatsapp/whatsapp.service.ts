@@ -382,4 +382,52 @@ export class WhatsappService {
 
     return { success: true };
   }
+
+  async getClients() {
+    return this.prisma.client.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        numbers: {
+          include: {
+            steps: {
+              orderBy: { stepNumber: 'asc' },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getNumbers() {
+    return this.prisma.whatsAppNumber.findMany({
+      orderBy: { phoneNumber: 'asc' },
+      include: {
+        client: true,
+        steps: {
+          orderBy: { stepNumber: 'asc' },
+        },
+      },
+    });
+  }
+
+  async getMessages(numberId: string, startDate?: string, endDate?: string) {
+    const where: any = { numberId };
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) {
+        where.createdAt.gte = new Date(startDate);
+      }
+      if (endDate) {
+        where.createdAt.lte = new Date(endDate);
+      }
+    }
+
+    return this.prisma.message.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
 }
+
