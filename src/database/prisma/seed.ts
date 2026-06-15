@@ -90,8 +90,8 @@ async function main() {
     create: {
       email: adminEmail.toLowerCase(),
       passwordHash,
-      firstName: 'Platform',
-      lastName: 'Admin',
+      firstName: 'Praxion',
+      lastName: 'Technologies',
       roles: {
         create: [{ roleId: adminRole.id }],
       },
