@@ -13,7 +13,9 @@ export const envSchema = z.object({
   BSP_PROVIDER: z.enum(['ycloud']).default('ycloud'),
   NUMBER_PROVIDER: z.enum(['twilio']).default('twilio'),
   YCLOUD_API_KEY: z.string().optional(),
+  YCLOUD_API_BASE_URL: z.string().url().optional(),
   YCLOUD_SOLUTION_ID: z.string().optional(),
+  YCLOUD_WEBHOOK_SECRET: z.string().optional(),
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
 });
