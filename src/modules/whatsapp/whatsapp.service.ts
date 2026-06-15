@@ -81,6 +81,7 @@ export class WhatsappService {
 
         wabaResponse = await bindRes.json() as typeof wabaResponse;
       } catch (err) {
+        if (err instanceof BadRequestException) throw err;
         this.logger.error(`Failed to reach YCloud tp/bind API: ${err instanceof Error ? err.message : err}`);
         throw new BadRequestException('Failed to complete WABA binding with YCloud.');
       }
@@ -104,22 +105,23 @@ export class WhatsappService {
 
         registerResponse = await registerRes.json() as typeof registerResponse;
       } catch (err) {
+        if (err instanceof BadRequestException) throw err;
         this.logger.error(`Failed to reach YCloud register API: ${err instanceof Error ? err.message : err}`);
         throw new BadRequestException('Failed to complete phone registration with YCloud.');
       }
     }
 
     // 3. Database Updates and Transaction
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Find or create Client
       const clientName = wabaResponse.name || registerResponse.verifiedName || `Client - WABA ${dto.wabaId}`;
       let client = await tx.client.findUnique({
-        where: { name: clientName },
+        where: { wabaId: dto.wabaId },
       });
 
       if (!client) {
         client = await tx.client.create({
-          data: { name: clientName },
+          data: { name: clientName, wabaId: dto.wabaId },
         });
       }
 
@@ -129,7 +131,7 @@ export class WhatsappService {
         update: {
           phoneNumber: registerResponse.phoneNumber,
           wabaId: dto.wabaId,
-          ycloudAccountId: dto.solutionId,
+          ycloudAccountId: wabaResponse.id,
           connectionStatus: 'ACTIVE',
           lastPing: new Date(),
         },
@@ -138,7 +140,7 @@ export class WhatsappService {
           phoneNumber: registerResponse.phoneNumber,
           wabaId: dto.wabaId,
           phoneNumberId: dto.phoneNumberId,
-          ycloudAccountId: dto.solutionId,
+          ycloudAccountId: wabaResponse.id,
           connectionStatus: 'ACTIVE',
           lastPing: new Date(),
         },
@@ -173,29 +175,34 @@ export class WhatsappService {
         });
       }
 
-      // Record Audit Log
-      this.auditService.record({
-        actorId,
-        action: 'whatsapp.bind',
-        entityType: 'WhatsAppNumber',
-        entityId: whatsAppNumber.id,
-        metadata: {
-          wabaId: dto.wabaId,
-          phoneNumberId: dto.phoneNumberId,
-          phoneNumber: registerResponse.phoneNumber,
-          paymentMethodAttached: wabaResponse.paymentMethodAttached,
-        },
-      });
-
       return {
-        success: true,
         client,
         whatsAppNumber,
       };
     });
+
+    // Record Audit Log (outside the transaction scope)
+    this.auditService.record({
+      actorId,
+      action: 'whatsapp.bind',
+      entityType: 'WhatsAppNumber',
+      entityId: result.whatsAppNumber.id,
+      metadata: {
+        wabaId: dto.wabaId,
+        phoneNumberId: dto.phoneNumberId,
+        phoneNumber: registerResponse.phoneNumber,
+        paymentMethodAttached: wabaResponse.paymentMethodAttached,
+      },
+    });
+
+    return {
+      success: true,
+      client: result.client,
+      whatsAppNumber: result.whatsAppNumber,
+    };
   }
 
-  verifyWebhookSignature(signatureHeader: string, body: any): boolean {
+  verifyWebhookSignature(signatureHeader: string, rawBody: Buffer): boolean {
     const ycloudConfig = this.configService.get('ycloud', { infer: true });
     const secret = ycloudConfig?.webhookSecret;
 
@@ -208,6 +215,11 @@ export class WhatsappService {
 
     if (!signatureHeader) {
       this.logger.warn('Signature verification failed: Missing ycloud-signature header.');
+      return false;
+    }
+
+    if (!rawBody || rawBody.length === 0) {
+      this.logger.warn('Signature verification failed: Empty raw body.');
       return false;
     }
 
@@ -236,8 +248,7 @@ export class WhatsappService {
       }
 
       // Compute HMAC-SHA256
-      const payloadString = JSON.stringify(body);
-      const payload = `${timestamp}.${payloadString}`;
+      const payload = `${timestamp}.${rawBody.toString('utf8')}`;
       const expectedSignature = crypto
         .createHmac('sha256', secret)
         .update(payload)
@@ -285,6 +296,16 @@ export class WhatsappService {
 
         if (!whatsAppNumber) {
           this.logger.warn(`Received message for unregistered client phone number: ${clientPhone}`);
+          break;
+        }
+
+        // Prevent duplicate logs from webhook retries
+        const existingMessage = await this.prisma.message.findUnique({
+          where: { ycloudMessageId: messageId },
+        });
+
+        if (existingMessage) {
+          this.logger.log(`Message with ID ${messageId} already exists. Skipping duplicate insert.`);
           break;
         }
 

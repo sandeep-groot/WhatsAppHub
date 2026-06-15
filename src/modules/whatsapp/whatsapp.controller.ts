@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Headers, Param, Query, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Headers, Param, Query, UnauthorizedException, RawBody } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -27,8 +27,9 @@ export class WhatsappController {
   async handleWebhook(
     @Headers('ycloud-signature') signature: string,
     @Body() body: any,
+    @RawBody() rawBody: Buffer,
   ) {
-    const verified = this.whatsappService.verifyWebhookSignature(signature, body);
+    const verified = this.whatsappService.verifyWebhookSignature(signature, rawBody);
     if (!verified) {
       throw new UnauthorizedException('Invalid webhook signature');
     }
