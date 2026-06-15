@@ -33,7 +33,7 @@ export default function configuration(): AppConfig {
     jwt: {
       accessSecret: env.JWT_ACCESS_SECRET ?? '',
       refreshSecret: env.JWT_REFRESH_SECRET ?? '',
-      accessExpiresIn: env.JWT_ACCESS_EXPIRES_IN ?? '15m',
+      accessExpiresIn: env.JWT_ACCESS_EXPIRES_IN ?? '24h',
       refreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN ?? '7d',
     },
     providers: {
