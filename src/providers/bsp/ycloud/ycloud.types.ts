@@ -42,3 +42,31 @@ export type YCloudListWebhookEndpointsResponse = {
   total?: number;
   [key: string]: unknown;
 };
+
+export type YCloudWhatsAppBusinessAccount = {
+  id: string;
+  name: string;
+  currency?: string;
+  messageTemplateNamespace?: string;
+  accountReviewStatus?: string;
+  businessId?: string;
+  businessStatus?: string;
+  businessName?: string;
+  businessVerificationStatus?: string;
+  whatsappBusinessManagerMessagingLimit?: string;
+  ownershipType?: string;
+  primaryFundingId?: string;
+  timezoneId?: string;
+  paymentMethodAttached?: boolean;
+  isOnBizApp?: boolean;
+  [key: string]: unknown;
+};
+
+export type YCloudListWhatsAppBusinessAccountsResponse = {
+  offset?: number;
+  limit?: number;
+  length?: number;
+  items: YCloudWhatsAppBusinessAccount[];
+  total?: number;
+  [key: string]: unknown;
+};
