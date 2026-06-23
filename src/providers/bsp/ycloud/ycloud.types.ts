@@ -70,3 +70,34 @@ export type YCloudListWhatsAppBusinessAccountsResponse = {
   total?: number;
   [key: string]: unknown;
 };
+
+export type YCloudWhatsAppPhoneNumber = {
+  id: string;
+  phoneNumber: string;
+  wabaId?: string;
+  verifiedName?: string;
+  qualityRating?: string;
+  messagingLimit?: string;
+  whatsappBusinessManagerMessagingLimit?: string;
+  isOfficialBusinessAccount?: boolean;
+  codeVerificationStatus?: string;
+  status?: string;
+  displayPhoneNumber?: string;
+  nameStatus?: string;
+  newName?: string;
+  newNameStatus?: string;
+  decision?: string;
+  requestedVerifiedName?: string;
+  rejectionReason?: string;
+  isOnBizApp?: boolean;
+  [key: string]: unknown;
+};
+
+export type YCloudListWhatsAppPhoneNumbersResponse = {
+  offset?: number;
+  limit?: number;
+  length?: number;
+  items: YCloudWhatsAppPhoneNumber[];
+  total?: number;
+  [key: string]: unknown;
+};
