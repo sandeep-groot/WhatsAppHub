@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { AuthenticatedUser } from './types/authenticated-user.type';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -70,5 +72,16 @@ export class AuthController {
   @ZodResponse({ status: 200, type: AuthUserResponseDto })
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getMe(user.id);
+  }
+
+  @ApiBearerAuth()
+  @Patch('profile')
+  @ApiOperation({ summary: 'Update current authenticated user profile' })
+  @ZodResponse({ status: 200, type: AuthUserResponseDto })
+  updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(user.id, dto);
   }
 }

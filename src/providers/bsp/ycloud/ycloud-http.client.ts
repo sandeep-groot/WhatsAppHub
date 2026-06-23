@@ -3,6 +3,9 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../../../config/configuration';
+
 export type YCloudRequestOptions = {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   path: string;
@@ -15,8 +18,13 @@ export class YcloudHttpClient {
   private readonly baseUrl =
     process.env.YCLOUD_API_BASE_URL ?? 'https://api.ycloud.com/v2';
 
+  constructor(
+    private readonly configService: ConfigService<AppConfig, true>,
+  ) {}
+
   async request<T>(options: YCloudRequestOptions): Promise<T> {
-    const apiKey = process.env.YCLOUD_API_KEY;
+    const ycloudConfig = this.configService.get('ycloud', { infer: true });
+    const apiKey = ycloudConfig?.apiKey || process.env.YCLOUD_API_KEY;
     if (!apiKey) {
       throw new ServiceUnavailableException('YCLOUD_API_KEY is not configured');
     }
@@ -60,6 +68,10 @@ export class YcloudHttpClient {
     }
 
     if (!response.ok) {
+      console.error('YCloud API error details:', {
+        status: response.status,
+        body,
+      });
       throw new BadGatewayException({
         message: 'YCloud API returned an error',
         status: response.status,

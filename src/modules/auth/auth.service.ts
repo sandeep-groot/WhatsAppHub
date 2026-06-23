@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'crypto';
@@ -127,6 +127,44 @@ export class AuthService {
       include: { roles: { include: { role: true } } },
     });
     return this.toAuthUser(user);
+  }
+
+  async updateProfile(
+    userId: string,
+    dto: { firstName?: string; lastName?: string; email?: string },
+  ): Promise<AuthUserResponse> {
+    if (dto.email) {
+      const normalizedEmail = dto.email.toLowerCase();
+      const existing = await this.prisma.user.findFirst({
+        where: {
+          email: normalizedEmail,
+          NOT: { id: userId },
+        },
+      });
+      if (existing) {
+        throw new ConflictException('Email already in use');
+      }
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email ? dto.email.toLowerCase() : undefined,
+      },
+      include: { roles: { include: { role: true } } },
+    });
+
+    void this.auditService.record({
+      actorId: userId,
+      action: 'users.update_profile',
+      entityType: 'User',
+      entityId: userId,
+      metadata: { changes: dto },
+    });
+
+    return this.toAuthUser(updatedUser);
   }
 
   private async issueTokens(

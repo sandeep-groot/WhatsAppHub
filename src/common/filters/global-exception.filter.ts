@@ -48,7 +48,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             : Array.isArray(body.message)
               ? body.message.join(', ')
               : message;
-        details = body.details ?? body.errors;
+        details = body.details ?? body.errors ?? body;
       }
     } else if (exception instanceof Error) {
       message = exception.message;
