@@ -24,7 +24,13 @@ export class WhatsappService {
 
   async bindWabaAndNumber(dto: WabaBindInput, actorId: string) {
     const ycloudConfig = this.configService.get('ycloud', { infer: true });
-    const hasCredentials = ycloudConfig && ycloudConfig.apiKey && ycloudConfig.apiKey.trim().length > 0;
+    const apiKey = ycloudConfig?.apiKey;
+
+    if (!apiKey || apiKey.trim().length === 0) {
+      throw new BadRequestException('YCloud API credentials (YCLOUD_API_KEY) are not configured on the server.');
+    }
+
+    this.logger.log(`Initiating YCloud API handshake for WABA: ${dto.wabaId}`);
 
     let wabaResponse: {
       id: string;
@@ -40,76 +46,54 @@ export class WhatsappService {
       status: string;
     };
 
-    if (!hasCredentials) {
-      this.logger.warn(
-        `YCloud API Key is not set in environment variables. Falling back to MOCK mode for WABA ID: ${dto.wabaId}`,
-      );
-      
-      wabaResponse = {
-        id: dto.wabaId,
-        name: `Mock Client WABA - ${dto.wabaId.substring(0, 6)}`,
-        accountReviewStatus: 'APPROVED',
-        paymentMethodAttached: true,
-      };
+    // 1. Call WABA Bind API
+    try {
+      const bindUrl = `https://api.ycloud.com/v2/whatsapp/businessAccounts/${dto.wabaId}/tp/bind`;
+      const bindRes = await fetch(bindUrl, {
+        method: 'POST',
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      registerResponse = {
-        phoneNumber: `+120655501${Math.floor(10 + Math.random() * 90)}`,
-        wabaId: dto.wabaId,
-        verifiedName: `Mock Verified Number - ${dto.phoneNumberId.substring(0, 6)}`,
-        status: 'CONNECTED',
-      };
-    } else {
-      const apiKey = ycloudConfig.apiKey;
-      this.logger.log(`Initiating YCloud API handshake for WABA: ${dto.wabaId}`);
-
-      // 1. Call WABA Bind API
-      try {
-        const bindUrl = `https://api.ycloud.com/v2/whatsapp/businessAccounts/${dto.wabaId}/tp/bind`;
-        const bindRes = await fetch(bindUrl, {
-          method: 'POST',
-          headers: {
-            'X-API-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!bindRes.ok) {
-          const errMsg = await bindRes.text();
-          this.logger.error(`YCloud tp/bind failed with status ${bindRes.status}: ${errMsg}`);
-          throw new BadRequestException(`YCloud WABA binding failed: ${errMsg}`);
-        }
-
-        wabaResponse = await bindRes.json() as typeof wabaResponse;
-      } catch (err) {
-        if (err instanceof BadRequestException) throw err;
-        this.logger.error(`Failed to reach YCloud tp/bind API: ${err instanceof Error ? err.message : err}`);
-        throw new BadRequestException('Failed to complete WABA binding with YCloud.');
+      if (!bindRes.ok) {
+        const errMsg = await bindRes.text();
+        this.logger.error(`YCloud tp/bind failed with status ${bindRes.status}: ${errMsg}`);
+        throw new BadRequestException(`YCloud WABA binding failed: ${errMsg}`);
       }
 
-      // 2. Call Register Phone Number API
-      try {
-        const registerUrl = `https://api.ycloud.com/v2/whatsapp/phoneNumbers/${dto.wabaId}/${dto.phoneNumberId}/register`;
-        const registerRes = await fetch(registerUrl, {
-          method: 'POST',
-          headers: {
-            'X-API-Key': apiKey,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!registerRes.ok) {
-          const errMsg = await registerRes.text();
-          this.logger.error(`YCloud phoneNumbers/register failed with status ${registerRes.status}: ${errMsg}`);
-          throw new BadRequestException(`YCloud phone registration failed: ${errMsg}`);
-        }
-
-        registerResponse = await registerRes.json() as typeof registerResponse;
-      } catch (err) {
-        if (err instanceof BadRequestException) throw err;
-        this.logger.error(`Failed to reach YCloud register API: ${err instanceof Error ? err.message : err}`);
-        throw new BadRequestException('Failed to complete phone registration with YCloud.');
-      }
+      wabaResponse = await bindRes.json() as typeof wabaResponse;
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Failed to reach YCloud tp/bind API: ${err instanceof Error ? err.message : err}`);
+      throw new BadRequestException('Failed to complete WABA binding with YCloud.');
     }
+
+    // 2. Call Register Phone Number API
+    try {
+      const registerUrl = `https://api.ycloud.com/v2/whatsapp/phoneNumbers/${dto.wabaId}/${dto.phoneNumberId}/register`;
+      const registerRes = await fetch(registerUrl, {
+        method: 'POST',
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!registerRes.ok) {
+        const errMsg = await registerRes.text();
+        this.logger.error(`YCloud phoneNumbers/register failed with status ${registerRes.status}: ${errMsg}`);
+        throw new BadRequestException(`YCloud phone registration failed: ${errMsg}`);
+      }
+
+      registerResponse = await registerRes.json() as typeof registerResponse;
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Failed to reach YCloud register API: ${err instanceof Error ? err.message : err}`);
+      throw new BadRequestException('Failed to complete phone registration with YCloud.');
+    }
+
 
     // 3. Database Updates and Transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -207,8 +191,14 @@ export class WhatsappService {
     const secret = ycloudConfig?.webhookSecret;
 
     if (!secret || secret.trim().length === 0) {
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error(
+          'YCLOUD_WEBHOOK_SECRET is not configured in production environment. Webhook requests blocked for security.',
+        );
+        return false;
+      }
       this.logger.warn(
-        'YCLOUD_WEBHOOK_SECRET is not set in environment variables. Webhook signature checking is bypassed.',
+        'YCLOUD_WEBHOOK_SECRET is not set in environment variables. Webhook signature checking is bypassed in development mode.',
       );
       return true;
     }
