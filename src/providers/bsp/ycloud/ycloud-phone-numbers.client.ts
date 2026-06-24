@@ -29,10 +29,10 @@ export class YcloudPhoneNumbersClient {
     });
   }
 
-  getById(id: string) {
+  getById(wabaId: string, phoneNumber: string) {
     return this.http.request<YCloudWhatsAppPhoneNumber>({
       method: 'GET',
-      path: `/whatsapp/phoneNumbers/${id}`,
+      path: `/whatsapp/phoneNumbers/${wabaId}/${phoneNumber}`,
     });
   }
 }

@@ -20,10 +20,10 @@ export class PhoneNumbersController {
     return this.phoneNumbersService.list(query);
   }
 
-  @Get(':id')
+  @Get(':wabaId/:phoneNumber')
   @Roles(RoleName.ADMIN, RoleName.OPERATOR, RoleName.VIEWER)
-  @ApiOperation({ summary: 'Retrieve a WhatsApp phone number by id' })
-  getById(@Param('id') id: string) {
-    return this.phoneNumbersService.getById(id);
+  @ApiOperation({ summary: 'Retrieve a WhatsApp phone number by wabaId and phoneNumber' })
+  getById(@Param('wabaId') wabaId: string, @Param('phoneNumber') phoneNumber: string) {
+    return this.phoneNumbersService.getById(wabaId, phoneNumber);
   }
 }

@@ -19,7 +19,7 @@ export const listPhoneNumbersQuerySchema = z
     wabaId: z
       .string()
       .optional()
-      .meta({ example: '1483159693564497' }),
+      .meta({ example: '' }),
   })
   .meta({ id: 'ListPhoneNumbersQuery' });
 

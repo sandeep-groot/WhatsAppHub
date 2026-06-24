@@ -12,7 +12,7 @@ export class PhoneNumbersService {
     return this.ycloudPhoneNumbers.list(query);
   }
 
-  getById(id: string) {
-    return this.ycloudPhoneNumbers.getById(id);
+  getById(wabaId: string, phoneNumber: string) {
+    return this.ycloudPhoneNumbers.getById(wabaId, phoneNumber);
   }
 }

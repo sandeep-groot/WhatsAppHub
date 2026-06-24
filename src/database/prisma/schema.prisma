@@ -182,4 +182,39 @@ model Message {
   whatsAppNumber WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
 }
 
+model WebhookEvent {
+  id             String    @id @default(cuid())
+  eventId        String?   @unique // YCloud event id (evt_...) for dedup
+  type           String
+  apiVersion     String?
+  payload        Json
+  signatureValid Boolean   @default(false)
+  processed      Boolean   @default(false)
+  processedAt    DateTime?
+  error          String?   @db.Text
+  createdAt      DateTime  @default(now())
+
+  @@index([type])
+  @@index([processed])
+  @@index([createdAt])
+}
+
+model WhatsappMessage {
+  id           String    @id @default(cuid())
+  wamid        String?   @unique
+  wabaId       String?
+  fromNumber   String?
+  toNumber     String?
+  customerName String?
+  messageType  String?
+  messageText  String?   @db.Text
+  sendTime     DateTime?
+  createdOn    DateTime  @default(now())
+
+  @@map("whatsapp_messages")
+  @@index([wabaId])
+  @@index([fromNumber])
+  @@index([createdOn])
+}
+
 
