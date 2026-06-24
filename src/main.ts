@@ -19,7 +19,8 @@ async function bootstrap() {
     'http://127.0.0.1:3000',
     'https://localhost:3000',
     'https://whats-app-hub-frontend.vercel.app',
-    'https://whats-app-hub-git-development-sandeepgroots-projects.vercel.app'
+    'https://whats-app-hub-git-development-sandeepgroots-projects.vercel.app',
+    'http://localhost:10000'
   ];
 
   app.enableCors({
