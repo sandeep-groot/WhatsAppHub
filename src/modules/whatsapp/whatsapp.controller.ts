@@ -1,7 +1,6 @@
-import { Controller, Post, Get, Body, Headers, Param, Query, UnauthorizedException, RawBody } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Public } from '../../common/decorators/public.decorator';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { WabaBindDto } from './dto/waba-bind.dto';
 import { WhatsappService } from './whatsapp.service';
@@ -19,21 +18,6 @@ export class WhatsappController {
     @Body() dto: WabaBindDto,
   ) {
     return this.whatsappService.bindWabaAndNumber(dto, user.id);
-  }
-
-  @Public()
-  @Post('webhooks')
-  @ApiOperation({ summary: 'YCloud Webhook integration endpoint' })
-  async handleWebhook(
-    @Headers('ycloud-signature') signature: string,
-    @Body() body: any,
-    @RawBody() rawBody: Buffer,
-  ) {
-    const verified = this.whatsappService.verifyWebhookSignature(signature, rawBody);
-    if (!verified) {
-      throw new UnauthorizedException('Invalid webhook signature');
-    }
-    return this.whatsappService.handleWebhook(body);
   }
 
   @ApiBearerAuth()

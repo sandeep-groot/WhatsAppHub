@@ -15,7 +15,9 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { UsersModule } from './modules/users/users.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
@@ -32,6 +34,8 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
     UsersModule,
     IntegrationsModule,
     WhatsappModule,
+    RealtimeModule,
+    WebhooksModule,
   ],
   providers: [
     {
