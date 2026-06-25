@@ -96,7 +96,7 @@ export class WebhooksService {
         await this.inboundMessageHandler.handle(body);
         break;
       case 'whatsapp.message.updated':
-        await this.inboundMessageHandler.handle(body);
+        await this.messageUpdatedHandler.handle(body);
         break;
       case 'whatsapp.phone_number.updated':
       case 'whatsapp.phone_number.name_updated':
