@@ -157,6 +157,15 @@ export type YCloudListTemplatesResponse = {
   [key: string]: unknown;
 };
 
+export type YCloudCreateTemplatePayload = {
+  wabaId: string;
+  name: string;
+  language: string;
+  category: string;
+  components?: unknown[];
+  [key: string]: unknown;
+};
+
 export type YCloudUpdateTemplatePayload = {
   category?: string;
   components?: unknown[];
