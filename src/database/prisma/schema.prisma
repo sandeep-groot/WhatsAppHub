@@ -195,6 +195,16 @@ model WebhookEventType {
   @@map("webhook_event_types")
 }
 
+model LanguageCode {
+  id        String   @id @default(cuid())
+  language  String
+  code      String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([language])
+  @@map("language_codes")
+}
+
 enum RoleName {
   ADMIN
   OPERATOR

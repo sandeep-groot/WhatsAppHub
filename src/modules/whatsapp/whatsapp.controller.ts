@@ -2,6 +2,7 @@ import { Controller, Post, Get, Body, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
+import { SendMessageDto } from './dto/send-message.dto';
 import { WabaBindDto } from './dto/waba-bind.dto';
 import { WhatsappService } from './whatsapp.service';
 
@@ -18,6 +19,16 @@ export class WhatsappController {
     @Body() dto: WabaBindDto,
   ) {
     return this.whatsappService.bindWabaAndNumber(dto, user.id);
+  }
+
+  @ApiBearerAuth()
+  @Post('messages/send')
+  @ApiOperation({ summary: 'Send a WhatsApp text message via YCloud' })
+  async sendMessage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SendMessageDto,
+  ) {
+    return this.whatsappService.sendMessage(dto, user.id);
   }
 
   @ApiBearerAuth()

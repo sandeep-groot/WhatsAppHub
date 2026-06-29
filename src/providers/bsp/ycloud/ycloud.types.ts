@@ -101,3 +101,78 @@ export type YCloudListWhatsAppPhoneNumbersResponse = {
   total?: number;
   [key: string]: unknown;
 };
+
+export type YCloudSendTextMessagePayload = {
+  from: string;
+  to: string;
+  type: 'text';
+  text: { body: string };
+};
+
+export type YCloudTemplateParameter = {
+  type: string;
+  text?: string;
+  [key: string]: unknown;
+};
+
+export type YCloudTemplateComponent = {
+  type: string;
+  sub_type?: string;
+  index?: string | number;
+  parameters?: YCloudTemplateParameter[];
+  [key: string]: unknown;
+};
+
+export type YCloudSendTemplateMessagePayload = {
+  from: string;
+  to: string;
+  type: 'template';
+  template: {
+    name: string;
+    language: { code: string; policy?: string };
+    components?: YCloudTemplateComponent[];
+  };
+};
+
+export type YCloudSendMessagePayload =
+  | YCloudSendTextMessagePayload
+  | YCloudSendTemplateMessagePayload;
+
+export type YCloudWhatsAppTemplate = {
+  id?: string;
+  wabaId?: string;
+  name: string;
+  language: string;
+  category?: string;
+  status?: string;
+  components?: unknown[];
+  [key: string]: unknown;
+};
+
+export type YCloudListTemplatesResponse = {
+  page?: number;
+  limit?: number;
+  total?: number;
+  items: YCloudWhatsAppTemplate[];
+  [key: string]: unknown;
+};
+
+export type YCloudUpdateTemplatePayload = {
+  category?: string;
+  components?: unknown[];
+  [key: string]: unknown;
+};
+
+export type YCloudSendMessageResponse = {
+  id?: string;
+  wamid?: string;
+  wabaId?: string;
+  from?: string;
+  to?: string;
+  type?: string;
+  status?: string;
+  sendTime?: string;
+  createTime?: string;
+  text?: { body?: string };
+  [key: string]: unknown;
+};

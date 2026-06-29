@@ -1,5 +1,6 @@
 import { PrismaClient, RoleName } from '@prisma/client';
 import { hashPassword } from '../../common/utils/password.util';
+import { LANGUAGE_CODES } from '../../modules/language-codes/language-codes.constants';
 import { WEBHOOK_EVENT_CATALOGUE } from '../../modules/webhooks/webhook-events.constants';
 
 const prisma = new PrismaClient();
@@ -118,9 +119,19 @@ async function main() {
     });
   }
 
+  // Seed the supported WhatsApp language codes.
+  for (const entry of LANGUAGE_CODES) {
+    await prisma.languageCode.upsert({
+      where: { code: entry.code },
+      update: { language: entry.language },
+      create: { language: entry.language, code: entry.code },
+    });
+  }
+
   console.log(
     `Seed complete. Admin user: ${adminEmail}. ` +
-      `Webhook event types: ${WEBHOOK_EVENT_CATALOGUE.length}.`,
+      `Webhook event types: ${WEBHOOK_EVENT_CATALOGUE.length}. ` +
+      `Language codes: ${LANGUAGE_CODES.length}.`,
   );
 }
 
