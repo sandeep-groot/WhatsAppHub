@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { YcloudHttpClient } from './ycloud-http.client';
 import {
+  YCloudCreateTemplatePayload,
   YCloudListTemplatesResponse,
   YCloudUpdateTemplatePayload,
   YCloudWhatsAppTemplate,
@@ -17,6 +18,14 @@ export type ListTemplatesParams = {
 @Injectable()
 export class YcloudTemplatesClient {
   constructor(private readonly http: YcloudHttpClient) {}
+
+  create(payload: YCloudCreateTemplatePayload) {
+    return this.http.request<YCloudWhatsAppTemplate>({
+      method: 'POST',
+      path: '/whatsapp/templates',
+      body: payload,
+    });
+  }
 
   list(params: ListTemplatesParams = {}) {
     return this.http.request<YCloudListTemplatesResponse>({

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { YcloudTemplatesClient } from '../../providers/bsp/ycloud/ycloud-templates.client';
 import {
+  CreateTemplateInput,
   ListTemplatesQueryInput,
   UpdateTemplateInput,
 } from './dto/template.dto';
@@ -8,6 +9,10 @@ import {
 @Injectable()
 export class TemplatesService {
   constructor(private readonly ycloudTemplates: YcloudTemplatesClient) {}
+
+  create(payload: CreateTemplateInput) {
+    return this.ycloudTemplates.create(payload);
+  }
 
   list(query: ListTemplatesQueryInput) {
     return this.ycloudTemplates.list(query);

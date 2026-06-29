@@ -7,12 +7,14 @@ import {
   HttpStatus,
   Param,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RoleName } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import {
+  CreateTemplateDto,
   ListTemplatesQueryDto,
   UpdateTemplateDto,
 } from './dto/template.dto';
@@ -23,6 +25,13 @@ import { TemplatesService } from './templates.service';
 @Controller('integrations/ycloud/whatsapp/templates')
 export class TemplatesController {
   constructor(private readonly templatesService: TemplatesService) {}
+
+  @Post()
+  @Roles(RoleName.ADMIN, RoleName.OPERATOR)
+  @ApiOperation({ summary: 'Create a WhatsApp message template via YCloud' })
+  create(@Body() dto: CreateTemplateDto) {
+    return this.templatesService.create(dto);
+  }
 
   @Get()
   @Roles(RoleName.ADMIN, RoleName.OPERATOR, RoleName.VIEWER)
