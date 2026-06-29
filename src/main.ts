@@ -8,6 +8,11 @@ import {
 } from './config/swagger/setup-swagger';
 
 async function bootstrap() {
+  // Pin the entire process to UTC so all server-side Date handling, logging,
+  // and formatting are timezone-independent — a single UTC source of truth.
+  process.env.TZ = 'UTC';
+
+
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) =>
@@ -20,7 +25,8 @@ async function bootstrap() {
     'https://localhost:3000',
     'https://whats-app-hub-frontend.vercel.app',
     'https://whats-app-hub-git-development-sandeepgroots-projects.vercel.app',
-    'http://localhost:10000'
+    'http://localhost:10000',
+    'http://localhost:5000'
   ];
 
   app.enableCors({

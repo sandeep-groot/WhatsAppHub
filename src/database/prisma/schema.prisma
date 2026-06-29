@@ -5,61 +5,47 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-enum RoleName {
-  ADMIN
-  OPERATOR
-  VIEWER
-}
-
-enum UserStatus {
-  ACTIVE
-  INACTIVE
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
-  firstName    String?
-  lastName     String?
-  status       UserStatus @default(ACTIVE)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  roles         UserRole[]
-  refreshTokens RefreshToken[]
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  status        UserStatus     @default(ACTIVE)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
   auditLogs     AuditLog[]
+  refreshTokens RefreshToken[]
+  roles         UserRole[]
 
   @@index([status])
 }
 
 model Role {
-  id          String   @id @default(cuid())
-  name        RoleName @unique
+  id          String           @id @default(cuid())
+  name        RoleName         @unique
   description String?
-  createdAt   DateTime @default(now())
-
-  users       UserRole[]
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
   permissions RolePermission[]
+  users       UserRole[]
 }
 
 model Permission {
-  id          String   @id @default(cuid())
-  key         String   @unique
+  id          String           @id @default(cuid())
+  key         String           @unique
   description String?
-  createdAt   DateTime @default(now())
-
-  roles RolePermission[]
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  roles       RolePermission[]
 }
 
 model UserRole {
   userId String
   roleId String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
 }
@@ -67,9 +53,8 @@ model UserRole {
 model RolePermission {
   roleId       String
   permissionId String
-
-  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
 }
@@ -78,11 +63,10 @@ model RefreshToken {
   id        String    @id @default(cuid())
   userId    String
   tokenHash String    @unique
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -97,13 +81,129 @@ model AuditLog {
   metadata   Json?
   ipAddress  String?
   userAgent  String?
-  createdAt  DateTime @default(now())
-
-  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  actor      User?    @relation(fields: [actorId], references: [id])
 
   @@index([actorId])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model Client {
+  id        String           @id @default(cuid())
+  name      String
+  wabaId    String           @unique
+  status    String           @default("ACTIVE")
+  createdAt DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime         @updatedAt @db.Timestamptz(3)
+  numbers   WhatsAppNumber[]
+}
+
+model WhatsAppNumber {
+  id                 String           @id @default(cuid())
+  clientId           String
+  phoneNumber        String           @unique
+  voipProvider       String?
+  countryCode        String?
+  purchaseDate       DateTime?         @db.Timestamptz(3)
+  businessManagerId  String?
+  wabaId             String?
+  phoneNumberId      String?          @unique
+  ycloudAccountId    String?
+  connectionStatus   ConnectionStatus @default(PENDING)
+  webhookUrl         String?
+  webhookVerifyToken String?
+  lastPing           DateTime?        @db.Timestamptz(3)
+  messageCount       Int              @default(0)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime         @updatedAt @db.Timestamptz(3)
+  messages           Message[]
+  steps              OnboardingStep[]
+  client             Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model OnboardingStep {
+  id             String         @id @default(cuid())
+  numberId       String
+  stepNumber     Int
+  status         StepStatus     @default(PENDING)
+  notes          String?
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
+  whatsAppNumber WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
+
+  @@unique([numberId, stepNumber])
+}
+
+model Message {
+  id              String         @id @default(cuid())
+  numberId        String
+  direction       String
+  senderNumber    String
+  messageBody     String?
+  status          String
+  ycloudMessageId String?        @unique
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  whatsAppNumber  WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
+}
+
+model WebhookEvent {
+  id             String    @id @default(cuid())
+  eventId        String?   @unique
+  type           String
+  apiVersion     String?
+  payload        Json
+  signatureValid Boolean   @default(false)
+  processed      Boolean   @default(false)
+  processedAt    DateTime? @db.Timestamptz(3)
+  error          String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([type])
+  @@index([processed])
+  @@index([createdAt])
+}
+
+model WhatsappMessage {
+  id           String    @id @default(cuid())
+  wamid        String?   @unique
+  wabaId       String?
+  fromNumber   String?
+  toNumber     String?
+  customerName String?
+  messageType  String?
+  messageText  String?
+  sendTime     DateTime? @db.Timestamptz(3)
+  createdOn    DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([wabaId])
+  @@index([fromNumber])
+  @@index([createdOn])
+  @@map("whatsapp_messages")
+}
+
+model WebhookEventType {
+  id          String   @id @default(cuid())
+  type        String   @unique
+  label       String
+  category    String
+  description String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([category])
+  @@map("webhook_event_types")
+}
+
+enum RoleName {
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
 }
 
 enum ConnectionStatus {
@@ -120,101 +220,3 @@ enum StepStatus {
   DONE
   BLOCKED
 }
-
-model Client {
-  id        String   @id @default(cuid())
-  name      String
-  wabaId    String   @unique
-  status    String   @default("ACTIVE")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  numbers WhatsAppNumber[]
-}
-
-model WhatsAppNumber {
-  id                 String           @id @default(cuid())
-  clientId           String
-  phoneNumber        String           @unique
-  voipProvider       String?
-  countryCode        String?
-  purchaseDate       DateTime?
-  businessManagerId  String?
-  wabaId             String?
-  phoneNumberId      String?          @unique
-  ycloudAccountId    String?
-  connectionStatus   ConnectionStatus @default(PENDING)
-  webhookUrl         String?
-  webhookVerifyToken String?
-  lastPing           DateTime?
-  messageCount       Int              @default(0)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  steps  OnboardingStep[]
-  messages Message[]
-}
-
-model OnboardingStep {
-  id         String     @id @default(cuid())
-  numberId   String
-  stepNumber Int
-  status     StepStatus @default(PENDING)
-  notes      String?
-  updatedAt  DateTime   @updatedAt
-
-  whatsAppNumber WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
-
-  @@unique([numberId, stepNumber])
-}
-
-model Message {
-  id              String         @id @default(cuid())
-  numberId        String
-  direction       String         // "INBOUND" or "OUTBOUND"
-  senderNumber    String
-  messageBody     String?        @db.Text
-  status          String         // "SENT", "DELIVERED", "READ", "FAILED"
-  ycloudMessageId String?        @unique
-  createdAt       DateTime       @default(now())
-
-  whatsAppNumber WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
-}
-
-model WebhookEvent {
-  id             String    @id @default(cuid())
-  eventId        String?   @unique // YCloud event id (evt_...) for dedup
-  type           String
-  apiVersion     String?
-  payload        Json
-  signatureValid Boolean   @default(false)
-  processed      Boolean   @default(false)
-  processedAt    DateTime?
-  error          String?   @db.Text
-  createdAt      DateTime  @default(now())
-
-  @@index([type])
-  @@index([processed])
-  @@index([createdAt])
-}
-
-model WhatsappMessage {
-  id           String    @id @default(cuid())
-  wamid        String?   @unique
-  wabaId       String?
-  fromNumber   String?
-  toNumber     String?
-  customerName String?
-  messageType  String?
-  messageText  String?   @db.Text
-  sendTime     DateTime?
-  createdOn    DateTime  @default(now())
-
-  @@map("whatsapp_messages")
-  @@index([wabaId])
-  @@index([fromNumber])
-  @@index([createdOn])
-}
-
-

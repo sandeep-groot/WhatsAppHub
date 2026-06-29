@@ -1,5 +1,6 @@
 import { PrismaClient, RoleName } from '@prisma/client';
 import { hashPassword } from '../../common/utils/password.util';
+import { WEBHOOK_EVENT_CATALOGUE } from '../../modules/webhooks/webhook-events.constants';
 
 const prisma = new PrismaClient();
 
@@ -98,7 +99,29 @@ async function main() {
     },
   });
 
-  console.log(`Seed complete. Admin user: ${adminEmail}`);
+  // Seed the WhatsApp webhook event type catalogue. isActive is intentionally
+  // left untouched on update so admin toggles survive re-seeding.
+  for (const entry of WEBHOOK_EVENT_CATALOGUE) {
+    await prisma.webhookEventType.upsert({
+      where: { type: entry.type },
+      update: {
+        label: entry.label,
+        category: entry.category,
+        description: entry.description,
+      },
+      create: {
+        type: entry.type,
+        label: entry.label,
+        category: entry.category,
+        description: entry.description,
+      },
+    });
+  }
+
+  console.log(
+    `Seed complete. Admin user: ${adminEmail}. ` +
+      `Webhook event types: ${WEBHOOK_EVENT_CATALOGUE.length}.`,
+  );
 }
 
 main()
