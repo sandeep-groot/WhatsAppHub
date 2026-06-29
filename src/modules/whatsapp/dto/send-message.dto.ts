@@ -15,7 +15,7 @@ const toField = z
   .string()
   .min(1)
   .meta({
-    example: '+919779528344',
+    example: '+917428730894',
     description: 'Recipient phone number in E.164 format.',
   });
 
