@@ -103,21 +103,15 @@ model WhatsAppNumber {
   id                 String           @id @default(cuid())
   clientId           String
   phoneNumber        String           @unique
-  voipProvider       String?
-  countryCode        String?
-  purchaseDate       DateTime?         @db.Timestamptz(3)
-  businessManagerId  String?
   wabaId             String?
   phoneNumberId      String?          @unique
   ycloudAccountId    String?
   connectionStatus   ConnectionStatus @default(PENDING)
-  webhookUrl         String?
-  webhookVerifyToken String?
   lastPing           DateTime?        @db.Timestamptz(3)
   messageCount       Int              @default(0)
   createdAt          DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime         @updatedAt @db.Timestamptz(3)
-  messages           Message[]
+  messages           WhatsappMessage[]
   steps              OnboardingStep[]
   client             Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
@@ -134,16 +128,9 @@ model OnboardingStep {
   @@unique([numberId, stepNumber])
 }
 
-model Message {
-  id              String         @id @default(cuid())
-  numberId        String
-  direction       String
-  senderNumber    String
-  messageBody     String?
-  status          String
-  ycloudMessageId String?        @unique
-  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
-  whatsAppNumber  WhatsAppNumber @relation(fields: [numberId], references: [id], onDelete: Cascade)
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
 }
 
 model WebhookEvent {
@@ -164,19 +151,26 @@ model WebhookEvent {
 }
 
 model WhatsappMessage {
-  id           String    @id @default(cuid())
-  wamid        String?   @unique
-  wabaId       String?
-  fromNumber   String?
-  toNumber     String?
-  customerName String?
-  messageType  String?
-  messageText  String?
-  sendTime     DateTime? @db.Timestamptz(3)
-  createdOn    DateTime  @default(now()) @db.Timestamptz(3)
+  id              String           @id @default(cuid())
+  numberId        String
+  wamid           String?          @unique
+  wabaId          String?
+  fromNumber      String?
+  toNumber        String?
+  customerNumber  String
+  customerName    String?
+  direction       MessageDirection @default(INBOUND)
+  messageType     String?
+  messageText     String?
+  status          String           @default("SENT")
+  sendTime        DateTime?        @db.Timestamptz(3)
+  createdOn       DateTime         @default(now()) @db.Timestamptz(3)
+  whatsAppNumber  WhatsAppNumber   @relation(fields: [numberId], references: [id], onDelete: Cascade)
 
+  @@index([numberId])
   @@index([wabaId])
   @@index([fromNumber])
+  @@index([customerNumber])
   @@index([createdOn])
   @@map("whatsapp_messages")
 }

@@ -19,33 +19,6 @@ export class InboundMessageHandler {
     const customerName = inbound.customerProfile?.name;
     const messageText = inbound.text?.body;
 
-    // 1. Persist to the dedicated whatsapp_messages table (deduplicated by wamid).
-    if (wamid) {
-      const existing = await this.prisma.whatsappMessage.findUnique({
-        where: { wamid },
-      });
-      if (existing) {
-        this.logger.log(
-          `WhatsApp message ${wamid} already stored. Skipping duplicate.`,
-        );
-      } else {
-        await this.prisma.whatsappMessage.create({
-          data: {
-            wamid,
-            wabaId: inbound.wabaId,
-            fromNumber: inbound.from,
-            toNumber: inbound.to,
-            customerName,
-            messageType: inbound.type,
-            messageText,
-            sendTime: inbound.sendTime ? new Date(inbound.sendTime) : undefined,
-          },
-        });
-        this.logger.log(`Stored inbound WhatsApp message ${wamid}.`);
-      }
-    }
-
-    // 2. Maintain existing connection/conversation state for the dashboard.
     const clientPhone = inbound.to;
     if (!clientPhone) return;
 
@@ -60,21 +33,33 @@ export class InboundMessageHandler {
       return;
     }
 
+    // Persist to unified whatsapp_messages table (deduplicated by wamid)
     if (wamid) {
-      const existingMessage = await this.prisma.message.findUnique({
-        where: { ycloudMessageId: wamid },
+      const existing = await this.prisma.whatsappMessage.findUnique({
+        where: { wamid },
       });
-      if (!existingMessage) {
-        await this.prisma.message.create({
+      if (existing) {
+        this.logger.log(
+          `WhatsApp message ${wamid} already stored. Skipping duplicate.`,
+        );
+      } else {
+        await this.prisma.whatsappMessage.create({
           data: {
-            numberId: whatsAppNumber.id,
+            whatsAppNumber: { connect: { id: whatsAppNumber.id } },
+            wamid,
+            wabaId: inbound.wabaId,
+            fromNumber: inbound.from,
+            toNumber: inbound.to,
+            customerNumber: inbound.from ?? 'unknown',
+            customerName,
             direction: 'INBOUND',
-            senderNumber: inbound.from ?? 'unknown',
-            messageBody: messageText ?? '[Media or Non-text Message]',
+            messageType: inbound.type,
+            messageText: messageText ?? '[Media or Non-text Message]',
             status: 'DELIVERED',
-            ycloudMessageId: wamid,
+            sendTime: inbound.sendTime ? new Date(inbound.sendTime) : undefined,
           },
         });
+        this.logger.log(`Stored inbound WhatsApp message ${wamid}.`);
       }
     }
 

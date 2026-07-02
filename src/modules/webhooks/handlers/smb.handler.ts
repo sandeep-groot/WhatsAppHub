@@ -96,6 +96,18 @@ export class SmbHandler {
       return;
     }
 
+    const clientPhone = inbound.to;
+    if (!clientPhone) return;
+
+    const whatsAppNumber = await this.prisma.whatsAppNumber.findUnique({
+      where: { phoneNumber: clientPhone },
+    });
+
+    if (!whatsAppNumber) {
+      this.logger.warn(`[${source}] Received message for unregistered client phone number: ${clientPhone}`);
+      return;
+    }
+
     const existing = await this.prisma.whatsappMessage.findUnique({
       where: { wamid },
     });
@@ -106,13 +118,17 @@ export class SmbHandler {
 
     await this.prisma.whatsappMessage.create({
       data: {
+        whatsAppNumber: { connect: { id: whatsAppNumber.id } },
         wamid,
         wabaId: inbound.wabaId,
         fromNumber: inbound.from,
         toNumber: inbound.to,
+        customerNumber: inbound.from ?? 'unknown',
         customerName: inbound.customerProfile?.name,
+        direction: 'INBOUND',
         messageType: inbound.type,
         messageText: inbound.text?.body,
+        status: 'DELIVERED',
         sendTime: inbound.sendTime ? new Date(inbound.sendTime) : undefined,
       },
     });
@@ -129,14 +145,29 @@ export class SmbHandler {
       return;
     }
 
-    const data = {
+    const businessPhone = msg.from;
+    if (!businessPhone) return;
+
+    const whatsAppNumber = await this.prisma.whatsAppNumber.findUnique({
+      where: { phoneNumber: businessPhone },
+    });
+
+    if (!whatsAppNumber) {
+      this.logger.warn(`[${source}] Sent message from unregistered client phone number: ${businessPhone}`);
+      return;
+    }
+
+    const commonData = {
       wamid,
       wabaId: msg.wabaId,
       fromNumber: msg.from,
       toNumber: msg.to,
+      customerNumber: msg.to ?? 'unknown',
       customerName: msg.customerProfile?.name,
+      direction: 'OUTBOUND' as const,
       messageType: msg.type,
-      messageText: msg.text?.body,/*  */
+      messageText: msg.text?.body,
+      status: msg.status ?? 'SENT',
       sendTime: msg.sendTime
         ? new Date(msg.sendTime)
         : msg.createTime
@@ -146,8 +177,14 @@ export class SmbHandler {
 
     await this.prisma.whatsappMessage.upsert({
       where: { wamid },
-      create: data,
-      update: data,
+      create: {
+        ...commonData,
+        whatsAppNumber: { connect: { id: whatsAppNumber.id } },
+      },
+      update: {
+        status: commonData.status,
+        sendTime: commonData.sendTime,
+      },
     });
     this.logger.log(`[${source}] Stored/updated outbound message ${wamid}.`);
   }

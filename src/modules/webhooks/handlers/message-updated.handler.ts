@@ -28,44 +28,57 @@ export class MessageUpdatedHandler {
 
     const wamid = msg.wamid ?? msg.id;
 
-    // 1. Persist/refresh the (outbound or status-updated) message.
+    // 1. Resolve registered business line connection
+    let whatsAppNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: {
+        OR: [
+          { phoneNumber: msg.from },
+          { phoneNumber: msg.to },
+        ],
+      },
+    });
+
+    if (!whatsAppNumber) {
+      this.logger.warn(`Could not resolve registered business line connection for message status update: ${wamid}`);
+      return;
+    }
+
+    const isOutbound = msg.from === whatsAppNumber.phoneNumber;
+    const customerNumber = isOutbound ? (msg.to ?? 'unknown') : (msg.from ?? 'unknown');
+    const direction = isOutbound ? ('OUTBOUND' as const) : ('INBOUND' as const);
+
+    // 2. Persist/refresh the message state in unified table.
     if (wamid) {
-      const data = {
+      const commonData = {
         wamid,
         wabaId: msg.wabaId,
         fromNumber: msg.from,
         toNumber: msg.to,
+        customerNumber,
         customerName: msg.customerProfile?.name,
+        direction,
         messageType: msg.type,
         messageText: msg.text?.body,
+        status: msg.status ?? 'SENT',
         sendTime: msg.sendTime
           ? new Date(msg.sendTime)
           : msg.createTime
             ? new Date(msg.createTime)
             : undefined,
       };
-      // Prisma ignores `undefined` fields on update, so later slim
-      // status events won't wipe text/customerName set by the first event.
+
       await this.prisma.whatsappMessage.upsert({
         where: { wamid },
-        create: data,
-        update: data,
+        create: {
+          ...commonData,
+          whatsAppNumber: { connect: { id: whatsAppNumber.id } },
+        },
+        update: {
+          status: commonData.status,
+          sendTime: commonData.sendTime,
+        },
       });
-      this.logger.log(`Stored/updated WhatsApp message ${wamid}.`);
-    }
-
-    // 2. Keep the legacy Message table status in sync (dashboard).
-    if (msg.id && msg.status) {
-      const existingMessage = await this.prisma.message.findUnique({
-        where: { ycloudMessageId: msg.id },
-      });
-      if (existingMessage) {
-        await this.prisma.message.update({
-          where: { id: existingMessage.id },
-          data: { status: msg.status },
-        });
-        this.logger.log(`Message ${msg.id} status updated to ${msg.status}.`);
-      }
+      this.logger.log(`Stored/updated WhatsApp message ${wamid} with status ${msg.status}.`);
     }
   }
 }
