@@ -72,56 +72,45 @@ export class WhatsappService {
         ? new Date(response.createTime)
         : undefined;
 
-    // 1. Dedicated whatsapp_messages table (deduplicated by wamid).
-    if (wamid) {
-      const data = {
-        wamid,
-        wabaId: response.wabaId,
-        fromNumber: response.from ?? dto.from,
-        toNumber: response.to ?? dto.to,
-        messageType: response.type ?? dto.type,
-        messageText: response.text?.body ?? messageText,
-        sendTime,
-      };
-      await this.prisma.whatsappMessage.upsert({
-        where: { wamid },
-        create: data,
-        update: data,
-      });
-    }
-
-    // 2. Dashboard Message log, linked to the sender's registered number.
+    // 1. Resolve registered business line connection
     const whatsAppNumber = await this.prisma.whatsAppNumber.findUnique({
       where: { phoneNumber: dto.from },
     });
 
-    if (whatsAppNumber) {
-      if (wamid) {
-        const existing = await this.prisma.message.findUnique({
-          where: { ycloudMessageId: wamid },
-        });
-        if (!existing) {
-          await this.prisma.message.create({
-            data: {
-              numberId: whatsAppNumber.id,
-              direction: 'OUTBOUND',
-              senderNumber: dto.from,
-              messageBody: messageText,
-              status: response.status ?? 'SENT',
-              ycloudMessageId: wamid,
-            },
-          });
-        }
-      }
-      await this.prisma.whatsAppNumber.update({
-        where: { id: whatsAppNumber.id },
-        data: { messageCount: { increment: 1 }, lastPing: new Date() },
-      });
-    } else {
-      this.logger.warn(
-        `Outbound message sent from unregistered number ${dto.from}; skipping dashboard log.`,
-      );
+    if (!whatsAppNumber) {
+      throw new BadRequestException(`Business number ${dto.from} is not registered.`);
     }
+
+    // 2. Persist to unified whatsapp_messages table (deduplicated by wamid)
+    if (wamid) {
+      const commonData = {
+        wamid,
+        wabaId: response.wabaId,
+        fromNumber: response.from ?? dto.from,
+        toNumber: response.to ?? dto.to,
+        customerNumber: response.to ?? dto.to,
+        direction: 'OUTBOUND' as const,
+        messageType: response.type ?? dto.type,
+        messageText: response.text?.body ?? messageText,
+        status: response.status ?? 'SENT',
+        sendTime,
+      };
+
+      await this.prisma.whatsappMessage.upsert({
+        where: { wamid },
+        create: {
+          ...commonData,
+          whatsAppNumber: { connect: { id: whatsAppNumber.id } },
+        },
+        update: commonData,
+      });
+    }
+
+    // 3. Update stats and checklist
+    await this.prisma.whatsAppNumber.update({
+      where: { id: whatsAppNumber.id },
+      data: { messageCount: { increment: 1 }, lastPing: new Date() },
+    });
 
     this.auditService.record({
       actorId,
@@ -335,24 +324,69 @@ export class WhatsappService {
     });
   }
 
-  async getMessages(numberId: string, startDate?: string, endDate?: string) {
-    const where: any = { numberId };
+  async getMessages(
+    ycloudPhoneId: string,
+    customerNumber?: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const whatsAppNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: {
+        OR: [
+          { id: ycloudPhoneId },
+          { phoneNumberId: ycloudPhoneId },
+        ],
+      },
+    });
+
+    if (!whatsAppNumber) return [];
+
+    const where: any = { numberId: whatsAppNumber.id };
+
+    if (customerNumber) {
+      where.customerNumber = customerNumber;
+    }
 
     if (startDate || endDate) {
-      where.createdAt = {};
+      where.createdOn = {};
       if (startDate) {
-        where.createdAt.gte = new Date(startDate);
+        where.createdOn.gte = new Date(startDate);
       }
       if (endDate) {
-        where.createdAt.lte = new Date(endDate);
+        where.createdOn.lte = new Date(endDate);
       }
     }
 
-    return this.prisma.message.findMany({
+    return this.prisma.whatsappMessage.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdOn: customerNumber ? 'asc' : 'desc' }, // Order asc for sequential chat history
       take: 200,
     });
+  }
+
+  async getCustomers(ycloudPhoneId: string) {
+    const whatsAppNumber = await this.prisma.whatsAppNumber.findFirst({
+      where: {
+        OR: [
+          { id: ycloudPhoneId },
+          { phoneNumberId: ycloudPhoneId },
+        ],
+      },
+    });
+
+    if (!whatsAppNumber) return [];
+
+    const messages = await this.prisma.whatsappMessage.findMany({
+      where: { numberId: whatsAppNumber.id },
+      distinct: ['customerNumber'],
+      orderBy: { createdOn: 'desc' },
+      select: {
+        customerNumber: true,
+        customerName: true,
+      },
+    });
+
+    return messages;
   }
 }
 
