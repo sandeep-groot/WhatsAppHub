@@ -48,13 +48,22 @@ export class WhatsappController {
   @ApiBearerAuth()
   @Get('numbers/:id/messages')
   @ApiOperation({ summary: 'Retrieve conversation logs for a registered number' })
+  @ApiQuery({ name: 'customerNumber', required: false, type: String })
   @ApiQuery({ name: 'startDate', required: false, type: String })
   @ApiQuery({ name: 'endDate', required: false, type: String })
   async getMessages(
     @Param('id') id: string,
+    @Query('customerNumber') customerNumber?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.whatsappService.getMessages(id, startDate, endDate);
+    return this.whatsappService.getMessages(id, customerNumber, startDate, endDate);
+  }
+
+  @ApiBearerAuth()
+  @Get('numbers/:id/customers')
+  @ApiOperation({ summary: 'Retrieve unique customer list for a registered number' })
+  async getCustomers(@Param('id') id: string) {
+    return this.whatsappService.getCustomers(id);
   }
 }
