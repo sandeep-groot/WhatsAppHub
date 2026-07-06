@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/configuration';
 import {
@@ -15,6 +16,8 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
+  app.use(cookieParser());
+
   const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) =>
 
     o.trim(),
@@ -22,6 +25,8 @@ async function bootstrap() {
   ) ?? [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'https://localhost:3000',
+    'https://127.0.0.1:3000',
     'https://localhost:3000',
     'https://whats-app-hub-frontend.vercel.app',
     'https://whats-app-hub-git-development-sandeepgroots-projects.vercel.app',

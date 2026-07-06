@@ -7,7 +7,10 @@ export const logoutSchema = z
       .string()
       .min(1)
       .optional()
-      .meta({ description: 'Optional: revoke only this refresh token' }),
+      .meta({
+        description:
+          'Optional: revoke only this refresh token. If omitted, revokes all sessions and uses the `refresh_token` cookie when present.',
+      }),
   })
   .meta({ id: 'LogoutDto' });
 

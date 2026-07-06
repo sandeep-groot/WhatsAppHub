@@ -6,7 +6,7 @@ import { comparePassword } from '../../common/utils/password.util';
 import { AppConfig } from '../../config/configuration';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { AuthTokensResponse, AuthUserResponse } from './dto/auth-response.dto';
+import { AuthUserResponse, IssuedAuthTokens } from './dto/auth-response.dto';
 import type { LoginInput } from './dto/login.dto';
 import { AccessTokenPayload } from './strategies/jwt.strategy';
 import { AuthenticatedUser } from './types/authenticated-user.type';
@@ -23,7 +23,7 @@ export class AuthService {
   async login(
     dto: LoginInput,
     ipAddress?: string,
-  ): Promise<AuthTokensResponse> {
+  ): Promise<IssuedAuthTokens> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
       include: { roles: { include: { role: true } } },
@@ -55,7 +55,7 @@ export class AuthService {
   async refresh(
     refreshToken: string,
     ipAddress?: string,
-  ): Promise<AuthTokensResponse> {
+  ): Promise<IssuedAuthTokens> {
     const tokenHash = this.hashToken(refreshToken);
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
