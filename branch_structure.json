@@ -1,0 +1,33 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "development",
+    "feature/new-onboarding",
+    "feature/onboarding",
+    "feature/pre-development",
+    "feature/template-endpoints-seeding-lang-code",
+    "main",
+    "origin",
+    "update/code-update"
+  ],
+  "parent": {
+    "development": "main",
+    "feature/new-onboarding": "main",
+    "feature/onboarding": "main",
+    "feature/pre-development": "main",
+    "feature/template-endpoints-seeding-lang-code": "main",
+    "main": null,
+    "origin": "main",
+    "update/code-update": "main"
+  },
+  "order": [
+    "main",
+    "development",
+    "feature/new-onboarding",
+    "feature/onboarding",
+    "feature/pre-development",
+    "feature/template-endpoints-seeding-lang-code",
+    "origin",
+    "update/code-update"
+  ]
+}
