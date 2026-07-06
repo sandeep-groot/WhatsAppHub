@@ -6,7 +6,11 @@ export const refreshTokenSchema = z
     refreshToken: z
       .string()
       .min(1)
-      .meta({ description: 'Opaque refresh token from login response' }),
+      .optional()
+      .meta({
+        description:
+          'Deprecated: refresh token is read from the HttpOnly `refresh_token` cookie.',
+      }),
   })
   .meta({ id: 'RefreshTokenDto' });
 

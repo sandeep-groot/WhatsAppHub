@@ -1,9 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
+import type { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AppConfig } from '../../../config/configuration';
 import { PrismaService } from '../../../database/prisma.service';
+import { AUTH_COOKIE } from '../auth-cookie.util';
 import { AuthenticatedUser } from '../types/authenticated-user.type';
 
 export type AccessTokenPayload = {
@@ -11,6 +13,14 @@ export type AccessTokenPayload = {
   email: string;
   type: 'access';
 };
+
+function extractAccessToken(req: Request): string | null {
+  const fromCookie = req.cookies?.[AUTH_COOKIE.access];
+  if (typeof fromCookie === 'string' && fromCookie.length > 0) {
+    return fromCookie;
+  }
+  return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -20,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   ) {
     const jwt = configService.get('jwt', { infer: true });
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: extractAccessToken,
       ignoreExpiration: false,
       secretOrKey: jwt.accessSecret,
     });
