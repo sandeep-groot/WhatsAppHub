@@ -8,14 +8,22 @@ import {
 } from './swagger-ui-theme';
 
 export function buildSwaggerDocument(app: INestApplication, port: number) {
-  const swaggerConfig = new DocumentBuilder()
+  const builder = new DocumentBuilder()
     .setTitle('WhatsApp Hub API')
     .setDescription('WhatsApp Hub backend API')
     .setVersion('1.0')
-    .addServer(`http://localhost:${port}/`, 'Local v1')
-    .addBearerAuth()
-    .build();
+    // Relative to the host serving /docs — works on Vercel and any deployed URL.
+    .addServer('/', 'Current host')
+    .addServer(`http://localhost:${port}/`, 'Local')
+    .addBearerAuth();
 
+  const publicUrl = process.env.PUBLIC_API_URL?.trim();
+  if (publicUrl) {
+    const normalized = publicUrl.endsWith('/') ? publicUrl : `${publicUrl}/`;
+    builder.addServer(normalized, 'Public / production');
+  }
+
+  const swaggerConfig = builder.build();
   const rawDocument = SwaggerModule.createDocument(app, swaggerConfig);
   return cleanupOpenApiDoc(rawDocument);
 }
