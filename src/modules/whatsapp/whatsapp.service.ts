@@ -6,13 +6,9 @@ import { YcloudMessagesClient } from '../../providers/bsp/ycloud/ycloud-messages
 import type { YCloudSendMessagePayload } from '../../providers/bsp/ycloud/ycloud.types';
 import { AuditService } from '../audit/audit.service';
 import type { SendMessageInput } from './dto/send-message.dto';
+import type { WabaBindInput } from './dto/waba-bind.dto';
 
-export interface WabaBindInput {
-  code: string;
-  wabaId: string;
-  phoneNumberId: string;
-  solutionId: string;
-}
+
 
 @Injectable()
 export class WhatsappService {
