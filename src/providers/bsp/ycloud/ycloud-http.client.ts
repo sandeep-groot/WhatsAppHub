@@ -72,8 +72,21 @@ export class YcloudHttpClient {
         status: response.status,
         body,
       });
+
+      let errorMessage = 'YCloud API returned an error';
+      if (body && typeof body === 'object') {
+        const errorObj = (body as any).error;
+        if (errorObj) {
+          errorMessage = errorObj.message || errorMessage;
+        } else if (typeof (body as any).message === 'string') {
+          errorMessage = (body as any).message;
+        }
+      } else if (typeof body === 'string' && body.trim().length > 0) {
+        errorMessage = body;
+      }
+
       throw new BadGatewayException({
-        message: 'YCloud API returned an error',
+        message: errorMessage,
         status: response.status,
         ycloudBody: body,
       });

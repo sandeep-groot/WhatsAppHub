@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import type { YCloudWebhookInput } from '../dto/ycloud-webhook.dto';
+import { customerName } from '../../whatsapp/utils/whatsapp-helper';
 
 /**
  * Handles:
@@ -157,13 +158,20 @@ export class SmbHandler {
       return;
     }
 
+    // Attempt to resolve customer name from previous message history
+    let resolvedCustomerName = msg.customerProfile?.name;
+    const customerNumber = msg.to ?? 'unknown';
+    if (!resolvedCustomerName && customerNumber !== 'unknown') {
+      resolvedCustomerName = (await customerName(this.prisma, customerNumber)) ?? undefined;
+    }
+
     const commonData = {
       wamid,
       wabaId: msg.wabaId,
       fromNumber: msg.from,
       toNumber: msg.to,
-      customerNumber: msg.to ?? 'unknown',
-      customerName: msg.customerProfile?.name,
+      customerNumber,
+      customerName: resolvedCustomerName,
       direction: 'OUTBOUND' as const,
       messageType: msg.type,
       messageText: msg.text?.body,

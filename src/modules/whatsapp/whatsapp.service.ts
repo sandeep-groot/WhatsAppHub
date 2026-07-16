@@ -7,6 +7,7 @@ import type { YCloudSendMessagePayload } from '../../providers/bsp/ycloud/ycloud
 import { AuditService } from '../audit/audit.service';
 import type { SendMessageInput } from './dto/send-message.dto';
 import type { WabaBindInput } from './dto/waba-bind.dto';
+import { customerName } from './utils/whatsapp-helper';
 
 
 
@@ -28,6 +29,10 @@ export class WhatsappService {
    * number is registered).
    */
   async sendMessage(dto: SendMessageInput, actorId: string) {
+    // Normalize phone numbers to E.164 format with a leading '+'
+    const fromNumber = dto.from.startsWith('+') ? dto.from : `+${dto.from}`;
+    const toNumber = dto.to.startsWith('+') ? dto.to : `+${dto.to}`;
+
     // Build the typed YCloud payload from the validated DTO. The superRefine
     // on the schema guarantees the matching field is present for each type.
     let payload: YCloudSendMessagePayload;
@@ -39,8 +44,8 @@ export class WhatsappService {
       }
       payload = {
         type: 'text',
-        from: dto.from,
-        to: dto.to,
+        from: fromNumber,
+        to: toNumber,
         text: { body: dto.text.body },
       };
       messageText = dto.text.body;
@@ -52,8 +57,8 @@ export class WhatsappService {
       }
       payload = {
         type: 'template',
-        from: dto.from,
-        to: dto.to,
+        from: fromNumber,
+        to: toNumber,
         template: dto.template,
       };
       messageText = `[template] ${dto.template.name}`;
@@ -70,21 +75,25 @@ export class WhatsappService {
 
     // 1. Resolve registered business line connection
     const whatsAppNumber = await this.prisma.whatsAppNumber.findUnique({
-      where: { phoneNumber: dto.from },
+      where: { phoneNumber: fromNumber },
     });
 
     if (!whatsAppNumber) {
-      throw new BadRequestException(`Business number ${dto.from} is not registered.`);
+      throw new BadRequestException(`Business number ${fromNumber} is not registered.`);
     }
+
+    // Attempt to resolve customer name from previous message history
+    const resolvedCustomerName = await customerName(this.prisma, toNumber);
 
     // 2. Persist to unified whatsapp_messages table (deduplicated by wamid)
     if (wamid) {
       const commonData = {
         wamid,
         wabaId: response.wabaId,
-        fromNumber: response.from ?? dto.from,
-        toNumber: response.to ?? dto.to,
-        customerNumber: response.to ?? dto.to,
+        fromNumber: response.from ?? fromNumber,
+        toNumber: response.to ?? toNumber,
+        customerNumber: response.to ?? toNumber,
+        customerName: resolvedCustomerName,
         direction: 'OUTBOUND' as const,
         messageType: response.type ?? dto.type,
         messageText: response.text?.body ?? messageText,
@@ -216,26 +225,41 @@ export class WhatsappService {
         });
       }
 
-      // Upsert WhatsAppNumber connection
-      const whatsAppNumber = await tx.whatsAppNumber.upsert({
-        where: { phoneNumberId: dto.phoneNumberId },
-        update: {
-          phoneNumber: registerResponse.phoneNumber,
-          wabaId: dto.wabaId,
-          ycloudAccountId: wabaResponse.id,
-          connectionStatus: 'ACTIVE',
-          lastPing: new Date(),
-        },
-        create: {
-          clientId: client.id,
-          phoneNumber: registerResponse.phoneNumber,
-          wabaId: dto.wabaId,
-          phoneNumberId: dto.phoneNumberId,
-          ycloudAccountId: wabaResponse.id,
-          connectionStatus: 'ACTIVE',
-          lastPing: new Date(),
+      // Find if there is an existing WhatsAppNumber by phoneNumberId OR by phoneNumber
+      let whatsAppNumber = await tx.whatsAppNumber.findFirst({
+        where: {
+          OR: [
+            { phoneNumberId: dto.phoneNumberId },
+            { phoneNumber: registerResponse.phoneNumber },
+          ],
         },
       });
+
+      if (whatsAppNumber) {
+        whatsAppNumber = await tx.whatsAppNumber.update({
+          where: { id: whatsAppNumber.id },
+          data: {
+            phoneNumber: registerResponse.phoneNumber,
+            wabaId: dto.wabaId,
+            phoneNumberId: dto.phoneNumberId,
+            ycloudAccountId: wabaResponse.id,
+            connectionStatus: 'ACTIVE',
+            lastPing: new Date(),
+          },
+        });
+      } else {
+        whatsAppNumber = await tx.whatsAppNumber.create({
+          data: {
+            clientId: client.id,
+            phoneNumber: registerResponse.phoneNumber,
+            wabaId: dto.wabaId,
+            phoneNumberId: dto.phoneNumberId,
+            ycloudAccountId: wabaResponse.id,
+            connectionStatus: 'ACTIVE',
+            lastPing: new Date(),
+          },
+        });
+      }
 
       // Initialize the 6 steps checklist
       // Step 1: Create Hub Account -> DONE

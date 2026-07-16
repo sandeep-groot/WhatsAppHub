@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import type { YCloudWebhookInput } from '../dto/ycloud-webhook.dto';
+import { customerName } from '../../whatsapp/utils/whatsapp-helper';
 
 interface YcloudMessage {
   id?: string;
@@ -49,13 +50,18 @@ export class MessageUpdatedHandler {
 
     // 2. Persist/refresh the message state in unified table.
     if (wamid) {
+      let resolvedCustomerName = msg.customerProfile?.name;
+      if (!resolvedCustomerName && customerNumber !== 'unknown') {
+        resolvedCustomerName = (await customerName(this.prisma, customerNumber)) ?? undefined;
+      }
+
       const commonData = {
         wamid,
         wabaId: msg.wabaId,
         fromNumber: msg.from,
         toNumber: msg.to,
         customerNumber,
-        customerName: msg.customerProfile?.name,
+        customerName: resolvedCustomerName,
         direction,
         messageType: msg.type,
         messageText: msg.text?.body,
