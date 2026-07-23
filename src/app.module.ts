@@ -20,6 +20,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
 import { UsersModule } from './modules/users/users.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
+import { ClientDetailsModule } from './modules/client-details/client-details.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
     UsersModule,
     IntegrationsModule,
     WhatsappModule,
+    ClientDetailsModule,
     RealtimeModule,
     WebhooksModule,
     LanguageCodesModule,

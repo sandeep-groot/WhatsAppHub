@@ -89,14 +89,29 @@ model AuditLog {
   @@index([createdAt])
 }
 
+model ClientDetail {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  phoneNumber String   @map("phone_number")
+  companyName String?  @map("company_name")
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  clients     Client[]
+
+  @@map("client_details")
+}
+
 model Client {
-  id        String           @id @default(cuid())
-  name      String
-  wabaId    String           @unique
-  status    String           @default("ACTIVE")
-  createdAt DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime         @updatedAt @db.Timestamptz(3)
-  numbers   WhatsAppNumber[]
+  id             String        @id @default(cuid())
+  name           String
+  wabaId         String        @unique
+  status         String        @default("ACTIVE")
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+  clientDetailId String?       @map("client_detail_id")
+  clientDetail   ClientDetail? @relation(fields: [clientDetailId], references: [id])
+  numbers        WhatsAppNumber[]
 }
 
 model WhatsAppNumber {

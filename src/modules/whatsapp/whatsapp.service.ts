@@ -213,6 +213,28 @@ export class WhatsappService {
 
     // 3. Database Updates and Transaction
     const result = await this.prisma.$transaction(async (tx) => {
+      // Find or create ClientDetail
+      let resolvedClientDetailId = dto.clientDetailId;
+
+      if (!resolvedClientDetailId && dto.newClientDetails) {
+        const existingDetail = await tx.clientDetail.findUnique({
+          where: { email: dto.newClientDetails.email.toLowerCase() },
+        });
+        if (existingDetail) {
+          resolvedClientDetailId = existingDetail.id;
+        } else {
+          const detail = await tx.clientDetail.create({
+            data: {
+              name: dto.newClientDetails.name,
+              email: dto.newClientDetails.email.toLowerCase(),
+              phoneNumber: dto.newClientDetails.phoneNumber,
+              companyName: dto.newClientDetails.companyName || null,
+            },
+          });
+          resolvedClientDetailId = detail.id;
+        }
+      }
+
       // Find or create Client
       const clientName = wabaResponse.name || registerResponse.verifiedName || `Client - WABA ${dto.wabaId}`;
       let client = await tx.client.findUnique({
@@ -221,7 +243,18 @@ export class WhatsappService {
 
       if (!client) {
         client = await tx.client.create({
-          data: { name: clientName, wabaId: dto.wabaId },
+          data: {
+            name: clientName,
+            wabaId: dto.wabaId,
+            clientDetailId: resolvedClientDetailId || null,
+          },
+        });
+      } else if (resolvedClientDetailId && !client.clientDetailId) {
+        client = await tx.client.update({
+          where: { id: client.id },
+          data: {
+            clientDetailId: resolvedClientDetailId,
+          },
         });
       }
 
@@ -321,6 +354,7 @@ export class WhatsappService {
     return this.prisma.client.findMany({
       orderBy: { name: 'asc' },
       include: {
+        clientDetail: true,
         numbers: {
           include: {
             steps: {
