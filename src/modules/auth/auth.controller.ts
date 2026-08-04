@@ -218,7 +218,7 @@ export class AuthController {
 
     const refreshToken =
 
-      body.refreshToken ??
+      body?.refreshToken ??
 
       (req.cookies?.[AUTH_COOKIE.refresh] as string | undefined);
 
@@ -282,7 +282,7 @@ export class AuthController {
 
     const jwt = this.configService.get('jwt', { infer: true });
 
-    const secure = this.configService.get('nodeEnv', { infer: true }) === 'development';
+    const secure = this.configService.get('nodeEnv', { infer: true }) === 'production';
 
 
 
