@@ -28,7 +28,7 @@ function baseCookieOptions(
   return {
     httpOnly: true,
     secure,
-    sameSite: 'none',
+    sameSite: secure ? 'none' : 'lax',
     path: '/',
     maxAge: maxAgeSeconds * 1000,
   };
@@ -56,12 +56,15 @@ export function setAuthCookies(
 }
 
 export function clearAuthCookies(res: Response, secure: boolean): void {
-  const clearOpts: CookieOptions = {
-    httpOnly: true,
-    secure,
-    sameSite: 'none',
-    path: '/',
-  };
-  res.clearCookie(AUTH_COOKIE.access, clearOpts);
-  res.clearCookie(AUTH_COOKIE.refresh, clearOpts);
+  const pastDate = new Date(0);
+  const optionsList: CookieOptions[] = [
+    { httpOnly: true, secure, sameSite: secure ? 'none' : 'lax', path: '/', maxAge: 0, expires: pastDate },
+    { httpOnly: true, secure: true, sameSite: 'none', path: '/', maxAge: 0, expires: pastDate },
+    { httpOnly: true, secure: false, sameSite: 'lax', path: '/', maxAge: 0, expires: pastDate },
+  ];
+
+  for (const opts of optionsList) {
+    res.clearCookie(AUTH_COOKIE.access, opts);
+    res.clearCookie(AUTH_COOKIE.refresh, opts);
+  }
 }
