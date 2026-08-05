@@ -65,6 +65,7 @@ model RefreshToken {
   tokenHash String    @unique
   expiresAt DateTime  @db.Timestamptz(3)
   revokedAt DateTime? @db.Timestamptz(3)
+  rememberMe Boolean  @default(false)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
