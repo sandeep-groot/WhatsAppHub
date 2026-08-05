@@ -12,6 +12,7 @@ export const logoutSchema = z
           'Optional: revoke only this refresh token. If omitted, revokes all sessions and uses the `refresh_token` cookie when present.',
       }),
   })
+  .default({})
   .meta({ id: 'LogoutDto' });
 
 export class LogoutDto extends createZodDto(logoutSchema) {}
