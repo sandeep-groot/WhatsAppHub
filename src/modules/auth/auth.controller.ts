@@ -117,21 +117,15 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
 
   async login(
-
     @Body() dto: LoginDto,
-
     @Req() req: Request,
-
     @Res({ passthrough: true }) res: Response,
-
   ) {
-
     const result = await this.authService.login(dto, req.ip);
 
-    this.applyAuthCookies(res, result);
+    this.applyAuthCookies(res, result, dto.rememberMe);
 
     return { user: result.user };
-
   }
 
 
@@ -180,7 +174,7 @@ export class AuthController {
 
     const result = await this.authService.refresh(refreshToken, req.ip);
 
-    this.applyAuthCookies(res, result);
+    this.applyAuthCookies(res, result, result.rememberMe);
 
     return { user: result.user };
 
@@ -218,7 +212,7 @@ export class AuthController {
 
     const refreshToken =
 
-      body.refreshToken ??
+      body?.refreshToken ??
 
       (req.cookies?.[AUTH_COOKIE.refresh] as string | undefined);
 
@@ -273,29 +267,23 @@ export class AuthController {
 
 
   private applyAuthCookies(
-
     res: Response,
-
     tokens: { accessToken: string; refreshToken: string },
-
+    rememberMe?: boolean,
   ): void {
-
     const jwt = this.configService.get('jwt', { infer: true });
+    const secure = this.configService.get('nodeEnv', { infer: true }) === 'production';
 
-    const secure = this.configService.get('nodeEnv', { infer: true }) === 'development';
-
-
+    // 30 days in seconds = 30 * 24 * 60 * 60 = 2592000
+    const refreshMaxAgeSeconds = rememberMe
+      ? 30 * 24 * 60 * 60
+      : expiryToMaxAgeSeconds(jwt.refreshExpiresIn);
 
     setAuthCookies(res, tokens, {
-
       accessMaxAgeSeconds: expiryToMaxAgeSeconds(jwt.accessExpiresIn),
-
-      refreshMaxAgeSeconds: expiryToMaxAgeSeconds(jwt.refreshExpiresIn),
-
+      refreshMaxAgeSeconds,
       secure,
-
     });
-
   }
 
 
