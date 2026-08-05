@@ -18,4 +18,5 @@ export type IssuedAuthTokens = {
   accessToken: string;
   refreshToken: string;
   user: AuthUserResponse;
+  rememberMe?: boolean;
 };
