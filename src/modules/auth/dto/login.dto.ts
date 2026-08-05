@@ -11,6 +11,10 @@ export const loginSchema = z
       example: 'ChangeMe123!',
       description: 'Password (min 8 characters)',
     }),
+    rememberMe: z.boolean().optional().default(false).meta({
+      example: true,
+      description: 'Extend session lifetime (30 days) when checked',
+    }),
   })
   .meta({ id: 'LoginDto' });
 
