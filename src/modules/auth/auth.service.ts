@@ -38,7 +38,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.issueTokens(user.id, user.email);
+    const tokens = await this.issueTokens(user.id, user.email, dto.rememberMe);
     const authUser = this.toAuthUser(user);
 
     void this.auditService.record({
@@ -78,7 +78,11 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
 
-    const tokens = await this.issueTokens(stored.user.id, stored.user.email);
+    const tokens = await this.issueTokens(
+      stored.user.id,
+      stored.user.email,
+      stored.rememberMe,
+    );
     const authUser = this.toAuthUser(stored.user);
 
     void this.auditService.record({
@@ -89,7 +93,7 @@ export class AuthService {
       ipAddress,
     });
 
-    return { ...tokens, user: authUser };
+    return { ...tokens, user: authUser, rememberMe: stored.rememberMe };
   }
 
   async logout(
@@ -146,30 +150,23 @@ export class AuthService {
       }
     }
 
-    const updatedUser = await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email: dto.email ? dto.email.toLowerCase() : undefined,
+        ...(dto.firstName !== undefined && { firstName: dto.firstName }),
+        ...(dto.lastName !== undefined && { lastName: dto.lastName }),
+        ...(dto.email !== undefined && { email: dto.email.toLowerCase() }),
       },
       include: { roles: { include: { role: true } } },
     });
 
-    void this.auditService.record({
-      actorId: userId,
-      action: 'users.update_profile',
-      entityType: 'User',
-      entityId: userId,
-      metadata: { changes: dto },
-    });
-
-    return this.toAuthUser(updatedUser);
+    return this.toAuthUser(user);
   }
 
   private async issueTokens(
     userId: string,
     email: string,
+    rememberMe?: boolean,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const jwt = this.configService.get('jwt', { infer: true });
 
@@ -180,12 +177,14 @@ export class AuthService {
     };
 
     const refreshTokenPlain = randomBytes(48).toString('hex');
+    const refreshExpiryString = rememberMe ? '30d' : jwt.refreshExpiresIn;
 
     await this.prisma.refreshToken.create({
       data: {
         userId,
         tokenHash: this.hashToken(refreshTokenPlain),
-        expiresAt: this.parseExpiry(jwt.refreshExpiresIn),
+        expiresAt: this.parseExpiry(refreshExpiryString),
+        rememberMe: rememberMe ?? false,
       },
     });
 
